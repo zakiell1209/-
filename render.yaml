@@ -1,7 +1,13 @@
 services:
   - type: web
-    name: nsfw-replicate-bot
+    name: retete-bot
     env: python
-    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
+    envVars:
+      - key: BOT_TOKEN
+        fromDotEnv: true
+      - key: REPLICATE_API_TOKEN
+        fromDotEnv: true
+      - key: WEBHOOK_HOST
+        fromDotEnv: true
