@@ -1,13 +1,30 @@
-from aiogram import Router, types
-from aiogram.filters import CommandStart
+import logging
+from aiogram import Bot, Dispatcher, executor, types
+import os
 
-router = Router()
+API_TOKEN = os.getenv("TELEGRAM_TOKEN")  # твой токен в env
 
-@router.message(CommandStart())
-async def start_handler(message: types.Message):
-    await message.answer("👋 Привет! Я генератор изображений. Отправь описание, и я сгенерирую картинку!")
+logging.basicConfig(level=logging.INFO)
 
-@router.message()
-async def prompt_handler(message: types.Message):
-    prompt = message.text
-    await message.answer(f"Ты отправил: {prompt}\n(Тут будет генерация через Replicate)")
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
+
+
+@dp.message_handler(commands=["start"])
+async def send_welcome(message: types.Message):
+    await message.reply("Привет! Я готов принимать команды.")
+
+
+@dp.message_handler(commands=["help"])
+async def send_help(message: types.Message):
+    await message.reply("Это простой бот на aiogram 2.")
+
+
+@dp.message_handler()
+async def echo(message: types.Message):
+    # Просто повторяем сообщение назад
+    await message.answer(message.text)
+
+
+if __name__ == "__main__":
+    executor.start_polling(dp, skip_updates=True)
