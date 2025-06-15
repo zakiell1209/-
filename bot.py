@@ -1,33 +1,63 @@
- import Router, F
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from bot.replicate import generate_image
-from bot.keyboards import get_model_keyboard
+import os
+import replicate
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import Message
+from aiogram.filters import CommandStart
+from aiogram.enums import ParseMode
+from aiogram.utils.markdown import hbold
+from fastapi import FastAPI, Request
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.webhook.aiohttp_server import setup_application
+import uvicorn
 
-router = Router()
+# 🔧 Конфигурация
+TELEGRAM_TOKEN = os.getenv("BOT_TOKEN")
+REPLICATE_TOKEN = os.getenv("REPLICATE_API_TOKEN")
+REPLICATE_MODEL = "aitechtree/nsfw-novel-generation"
 
-class GenState(StatesGroup):
-    waiting_for_prompt = State()
-    waiting_for_model = State()
+bot = Bot(token=TELEGRAM_TOKEN, parse_mode=ParseMode.HTML)
+dp = Dispatcher(storage=MemoryStorage())
+app = FastAPI()
 
-@router.message(F.text == "/start")
-async def start(message: Message, state: FSMContext):
-    await state.set_state(GenState.waiting_for_prompt)
-    await message.answer("👋 Отправь описание для NSFW изображения:")
+replicate_client = replicate.Client(api_token=REPLICATE_TOKEN)
 
-@router.message(GenState.waiting_for_prompt)
-async def ask_model(message: Message, state: FSMContext):
-    await state.update_data(prompt=message.text)
-    await state.set_state(GenState.waiting_for_model)
-    await message.answer("Выбери модель генерации:", reply_markup=get_model_keyboard())
+# 📥 Обработка команд
+@dp.message(CommandStart())
+async def start(msg: Message):
+    await msg.answer("👋 Привет! Отправь описание сцены, и я сгенерирую NSFW изображение.")
 
-@router.callback_query(GenState.waiting_for_model)
-async def generate(callback: types.CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    prompt = data["prompt"]
-    model = callback.data
-    await callback.message.edit_text("🧠 Генерация изображения…")
-    image_url = generate_image(prompt, model)
-    await callback.message.answer_photo(photo=image_url)
-    await state.clear()
+@dp.message()
+async def generate_image(msg: Message):
+    prompt = msg.text.strip()
+    await msg.answer("🎨 Генерация изображения, подожди...")
+
+    try:
+        output = replicate_client.run(
+            REPLICATE_MODEL,
+            input={"prompt": prompt}
+        )
+        if isinstance(output, list):
+            await msg.answer_photo(output[0])
+        else:
+            await msg.answer("❌ Не удалось получить изображение.")
+    except Exception as e:
+        await msg.answer(f"⚠️ Ошибка: {str(e)}")
+
+# 🌐 Вебхук роут
+@app.post("/webhook")
+async def webhook(request: Request):
+    body = await request.json()
+    await dp.feed_webhook_update(bot, body)
+    return {"ok": True}
+
+# 🧩 Настройка FastAPI + aiogram
+def main():
+    import asyncio
+    from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+
+    dp.startup.register(lambda _: bot.set_webhook("https://YOUR-RENDER-URL.onrender.com/webhook"))
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    main()
