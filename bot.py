@@ -1,30 +1,13 @@
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.types import Message
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-import os
-import replicate
-from dotenv import load_dotenv
+from aiogram import Router, types
+from aiogram.filters import CommandStart
 
-load_dotenv()
+router = Router()
 
-bot = Bot(token=os.getenv("BOT_TOKEN"))
-dp = Dispatcher()
+@router.message(CommandStart())
+async def start_handler(message: types.Message):
+    await message.answer("👋 Привет! Я генератор изображений. Отправь описание, и я сгенерирую картинку!")
 
-@dp.message(F.text)
-async def handle_message(message: Message):
-    await message.answer("Генерирую изображение, подождите...")
-
+@router.message()
+async def prompt_handler(message: types.Message):
     prompt = message.text
-
-    output = replicate.run(
-        "aitechtree/nsfw-novel-generation",
-        input={"prompt": prompt},
-        api_token=os.getenv("REPLICATE_TOKEN")
-    )
-
-    if isinstance(output, list):
-        image_url = output[0]
-    else:
-        image_url = output
-
-    await message.answer_photo(photo=image_url)
+    await message.answer(f"Ты отправил: {prompt}\n(Тут будет генерация через Replicate)")
