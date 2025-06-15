@@ -1,7 +1,4 @@
-fastapi
-uvicorn
-python-dotenv
-requests
 aiogram==3.1.1
-pydantic==2.3.0
-aiohttp~=3.8.5
+fastapi==0.110.0
+uvicorn==0.29.0
+replicate==0.24.0
