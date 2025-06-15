@@ -1,13 +1,14 @@
 services:
   - type: web
-    name: retete-bot
+    name: replicate-image-bot
     env: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     envVars:
-      - key: BOT_TOKEN
-        fromDotEnv: true
+      - key: TELEGRAM_TOKEN
+        value: your_telegram_bot_token_here
       - key: REPLICATE_API_TOKEN
-        fromDotEnv: true
-      - key: WEBHOOK_HOST
-        fromDotEnv: true
+        value: your_replicate_api_token_here
+      - key: WEBHOOK_URL
+        value: https://your_render_domain.onrender.com
